@@ -22,6 +22,13 @@ A Python-based **educational vulnerability scanner** that performs:
 - Clean modular code structure
 
 ---
+## 🔍 Lab Validation (Nmap)
+
+This project was tested against the **Metasploitable2** vulnerable VM using **Kali Linux** and **Nmap**.
+
+![Nmap Scan](assets/scanner_exampl.png)
+
+
 
 ## 🗂️ Project Structure
 
