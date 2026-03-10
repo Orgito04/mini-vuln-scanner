@@ -7,8 +7,21 @@ import time
 import requests
 from urllib.parse import urlparse
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
 
 from scanner.banner_grabber import grab_banner
+
+
+# ---------------- Banner ----------------
+
+def print_banner():
+
+    print("""
+========================================
+        MINI SECURITY SCANNER
+     Network Vulnerability Tool
+========================================
+""")
 
 
 # ---------------- Utils ----------------
@@ -20,6 +33,7 @@ def sanitize_filename(name):
 # ---------------- Risk Classification ----------------
 
 def classify_risk(port):
+
     high = [21, 23, 3389]
     medium = [80, 8080, 445]
 
@@ -70,6 +84,7 @@ def scan_port(target, port):
             except:
                 service = "Unknown"
 
+            sock.close()
             return (port, service)
 
         sock.close()
@@ -83,16 +98,26 @@ def scan_port(target, port):
 def port_scan(target, ports):
 
     results = []
+    total_ports = len(ports)
+    scanned = 0
 
     with ThreadPoolExecutor(max_workers=100) as executor:
 
         futures = [executor.submit(scan_port, target, p) for p in ports]
 
         for f in futures:
+
             r = f.result()
+            scanned += 1
+
+            percent = (scanned / total_ports) * 100
+            print(f"\rScanning progress: {percent:.1f}%", end="")
+
             if r:
-                print(f"[OPEN] {r[0]} ({r[1].upper()})")
+                print(f"\n[OPEN] {r[0]} ({r[1].upper()})")
                 results.append(r)
+
+    print("\n")
 
     return results
 
@@ -146,9 +171,9 @@ def save_html_report(target, results, web_results, scan_time):
 
     os.makedirs("reports", exist_ok=True)
 
-    file = f"reports/scan_{sanitize_filename(target)}.html"
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    open_ports = len(results)
+    file = f"reports/scan_{sanitize_filename(target)}.html"
 
     html = f"""
     <html>
@@ -168,9 +193,9 @@ def save_html_report(target, results, web_results, scan_time):
 
     <h1>Mini Vulnerability Scanner Report</h1>
 
-    <h3>Target: {target}</h3>
-    <h3>Open Ports: {open_ports}</h3>
-    <h3>Scan Time: {scan_time:.2f} seconds</h3>
+    <p><b>Target:</b> {target}</p>
+    <p><b>Scan Date:</b> {timestamp}</p>
+    <p><b>Scan Duration:</b> {scan_time:.2f} seconds</p>
 
     <h2>Port Scan Results</h2>
 
@@ -209,7 +234,7 @@ def save_html_report(target, results, web_results, scan_time):
 
     html += "</body></html>"
 
-    with open(file, "w") as f:
+    with open(file, "w", encoding="utf-8") as f:
         f.write(html)
 
     print(f"[+] HTML report saved: {file}")
@@ -218,6 +243,8 @@ def save_html_report(target, results, web_results, scan_time):
 # ---------------- MAIN ----------------
 
 def main():
+
+    print_banner()
 
     parser = argparse.ArgumentParser(
         description="Mini Vulnerability Scanner"
@@ -278,7 +305,7 @@ def main():
 
     csv_file = f"reports/scan_{sanitize_filename(target)}.csv"
 
-    with open(csv_file, "w", newline="") as f:
+    with open(csv_file, "w", newline="", encoding="utf-8") as f:
 
         writer = csv.DictWriter(
             f,
@@ -293,6 +320,17 @@ def main():
     print(f"\n[+] CSV report saved: {csv_file}")
 
     save_html_report(target, results, web_results, scan_time)
+
+    high = sum(1 for r in results if r["risk"] == "HIGH")
+    medium = sum(1 for r in results if r["risk"] == "MEDIUM")
+    low = sum(1 for r in results if r["risk"] == "LOW")
+
+    print("\nScan Summary")
+    print("---------------------------")
+    print(f"Open Ports: {len(results)}")
+    print(f"High Risk Services: {high}")
+    print(f"Medium Risk Services: {medium}")
+    print(f"Low Risk Services: {low}")
 
     print("\n===== SCAN COMPLETE =====\n")
 
