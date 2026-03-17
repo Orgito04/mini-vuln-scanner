@@ -37,6 +37,8 @@ except ImportError:
 
 try:
     import dns.resolver
+    import dns.query
+    import dns.zone
     DNS_OK = True
 except ImportError:
     DNS_OK = False
